@@ -228,12 +228,11 @@ trait Relation extends Traversable[Map[String,_]] {
     val dis_rel    = distinct(groupCols)
     val newKeys    = Nil
 
-    val ty         = typeOf(col)
     val newData    = (0 until dis_rel.size).map(i => {
       groupCols.map(dis_rel.row(i)(_)) :+ op(List(filter(dis_rel.row(i)).values(col)))
     }).toList
 
-    val newTypes = groupCols.map(typeOf(_)) :+ (newData.size match {
+    val newTypes = groupCols.map(typeOf) :+ (newData.size match {
       case 0 => OBJECT
       case _ => TypeDesc.typeDescOf(newData.head.last)
     })

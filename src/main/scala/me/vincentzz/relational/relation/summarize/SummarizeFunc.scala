@@ -7,4 +7,3 @@ object SummarizeFunc {
   def CONCATENATE(s: String)  = IFunction({_.mkString(s)}: List[String] => String)
   def SUM[T](implicit num: Numeric[T]) = IFunction({_.sum}: List[T] => T)
 }
-

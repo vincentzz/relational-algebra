@@ -17,5 +17,4 @@ object StringUtil {
   })
 
   def treatEscapes(s: String): String = StringContext.treatEscapes(s)
-
 }

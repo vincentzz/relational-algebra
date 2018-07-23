@@ -18,5 +18,4 @@ object ListUtil {
     case x :: xs => x.equals(v) && allElemEqs_(xs, v)
     case _       => true
   }
-
 }
