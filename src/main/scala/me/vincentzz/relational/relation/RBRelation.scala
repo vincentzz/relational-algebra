@@ -123,12 +123,13 @@ case class RBRelation(
 
   /**
     * filter records with IFunction binding parameter of give columns
-    *
     * @param func     function to evaluate
     * @param bindCols parameter to apply to func
+    * @tparam A type place holder1
+    * @tparam B type place holder2
     * @return
     */
-  override def restrict(func: IFunction, bindCols: List[String]): Relation = {
+  override def restrict[A, B] (func: A => B, bindCols: List[String]): Relation = {
     val bindingIdx = bindCols.map(columns.indexOf(_))
     val newData    = data.filter(r => {
       val paramType   = bindingIdx.map(types(_))
@@ -136,7 +137,7 @@ case class RBRelation(
       val paramValues = paramType.zip(paramList).map{
         case (ty, p) => ty.cast(p)
       }
-      func(paramValues).asInstanceOf[Boolean]
+      IFunction(func)(paramValues).asInstanceOf[Boolean]
     })
     newInstance(columns, types, keys, newData)
   }
@@ -154,13 +155,14 @@ case class RBRelation(
 
   /**
     * Extend the Relation with value of binding columns apply to given IFunction
-    *
-    * @param func       IFunction
-    * @param bindCols   parameter columns
+    * @param func function to be evaluate
+    * @param bindCols parameter columns
     * @param outPutCols target column names
+    * @tparam A type place holder1
+    * @tparam B type place holder2
     * @return
     */
-  override def extend(func: IFunction, bindCols: List[String], outPutCols: List[String]): Relation = {
+  override def extend[A,B](func: A => B, bindCols: List[String], outPutCols: List[String]): Relation = {
     bindCols.foreach(col => assert(columns.contains(col), s"there is no column $col exists"))
     val newHeader  = columns ++ outPutCols
     val newKeys    = keys
@@ -171,7 +173,7 @@ case class RBRelation(
       val paramValues = paramType.zip(paramList).map{
         case (ty, p) => ty.cast(p)
       }
-      val toAppend    = func(paramValues) match {
+      val toAppend    = IFunction(func)(paramValues) match {
         case x: Product => x.productIterator.toList
         case x          => List(x)
       }

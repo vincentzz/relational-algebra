@@ -1,5 +1,7 @@
 package me.vincentzz.relational.relation
 
+import java.util.UUID
+
 import me.vincentzz.relational.function.IFunction
 import me.vincentzz.relational.typedesc.{OBJECT, TypeDesc}
 
@@ -26,6 +28,17 @@ trait Relation extends Traversable[Map[String,_]] {
     * @return
     */
   def project(cols: List[String]): Relation
+
+  /**
+    * drop specified columns
+    * @param cols column names to drop
+    * @return
+    */
+  def allBut(cols: List[String]): Relation = {
+    cols.foreach(col => assert(columns.contains(col), s"$col not exist in $columns"))
+    project(columns.filter(!cols.contains(_)))
+  }
+
 
   /**
     * Get new Relation with specified keys
@@ -60,9 +73,11 @@ trait Relation extends Traversable[Map[String,_]] {
     * filter records with IFunction binding parameter of give columns
     * @param func     function to evaluate
     * @param bindCols parameter to apply to func
+    * @tparam A type place holder1
+    * @tparam B type place holder2
     * @return
     */
-  def restrict(func: IFunction, bindCols: List[String]): Relation
+  def restrict[A,B](func: A => B, bindCols: List[String]): Relation
 
 
   /**
@@ -203,23 +218,29 @@ trait Relation extends Traversable[Map[String,_]] {
 
   /**
     * Extend the Relation with value of binding columns apply to given IFunction
-    * @param func IFunction
+    * @param func function to be evaluate
     * @param bindCols parameter columns
     * @param outPutCols target column names
+    * @tparam A type place holder1
+    * @tparam B type place holder2
     * @return
     */
-  def extend(func: IFunction, bindCols: List[String], outPutCols: List[String]): Relation
+  def extend[A, B](func: A => B, bindCols: List[String], outPutCols: List[String]): Relation
 
   /**
-    * drop specified columns
-    * @param cols column names to drop
+    * Apply a function to a column, may change the data type
+    * @param func function to be evaluate
+    * @param col parameter columns
+    * @tparam A type place holder1
+    * @tparam B type place holder2
     * @return
     */
-  def allBut(cols: List[String]): Relation = {
-    cols.foreach(col => assert(columns.contains(col), s"$col not exist in $columns"))
-    project(columns.filter(cols.contains))
+  def convert[A, B](func: A => B, col: String): Relation = {
+    val temp = UUID.randomUUID.toString
+    extend(func, List(col), List(temp)).allBut(List(col)).rename(List(temp), List(col))
   }
 
+  //TODO refactor
   def summarize(groupCols: List[String], op: IFunction, col: String, outPutCol: String): Relation = {
     groupCols.foreach(col => assert(columns.contains(col), s"column $col not exists"))
     assert(!groupCols.contains(outPutCol), s"column $outPutCol exists in grouping columns")

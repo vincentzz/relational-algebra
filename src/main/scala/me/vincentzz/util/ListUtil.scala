@@ -14,6 +14,7 @@ object ListUtil {
 
   def allElemEqs[A](list: List[A]): Boolean = allElemEqs_(list, list.head)
 
+  @tailrec
   def allElemEqs_[A](list: List[A], v: A): Boolean = list match {
     case x :: xs => x.equals(v) && allElemEqs_(xs, v)
     case _       => true
