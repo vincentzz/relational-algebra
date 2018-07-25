@@ -292,10 +292,6 @@ trait Relation extends Traversable[Map[String, _]] {
       case 0 => OBJECT
       case _ => TypeDesc.typeDescOf(newData.head.drop(groupCols.size)(i))
     })
-    //    val newTypes = groupCols.map(typeOf) ++ (newData.size match {
-//      case 0 => OBJECT
-//      case _ => newData.head.drop(groupCols.size).map(TypeDesc.typeDescOf(_))
-//    })
 
     newInstance(newHeader, newTypes, newKeys, newData)
   }
