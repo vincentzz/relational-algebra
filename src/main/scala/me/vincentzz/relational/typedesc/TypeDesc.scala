@@ -9,13 +9,13 @@ import org.joda.time.format.DateTimeFormat
 trait TypeDesc[+T] {
   val actualType: Class[_]
 
-  def cast: Any => T = actualType.asInstanceOf[Class[T]].cast(_)
+  def cast : Any    => T      = actualType.asInstanceOf[Class[T]].cast(_)
 
-  def check: Any => Unit = o => assert(o.getClass == this.actualType, s"Type check Failed. Found: ${o.getClass.getSimpleName}, Expect: ${actualType.getSimpleName}")
+  def check: Any    => Unit   = o => assert(o.getClass == this.actualType, s"Type check Failed. Found: ${o.getClass.getSimpleName}, Expect: ${actualType.getSimpleName}")
 
-  def show: Any => String = cast(_).toString
+  def show : Any    => String = cast(_).toString
 
-  def read: String => T
+  def read : String => T
 }
 
 object TypeDesc {

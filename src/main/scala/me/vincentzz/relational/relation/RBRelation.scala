@@ -4,7 +4,7 @@ import java.util.UUID
 
 import me.vincentzz.relational.function.IFunction
 import me.vincentzz.relational.typedesc.{INT, OBJECT, STRING, TypeDesc}
-import me.vincentzz.util.ListUtil
+import me.vincentzz.util.{ListUtil, TupleUtil}
 
 object RBRelation {
   def create(columns: List[String],
@@ -14,8 +14,7 @@ object RBRelation {
             ): RBRelation = {
     val dataR = dataList.map{
       case d: List[_] => d
-      case d: Product => d.productIterator.toList
-      case d         => List(d)
+      case d          => TupleUtil.tupleToList(d)
     }
     RBRelation(columns, types, keys, dataR)
   }
@@ -173,11 +172,7 @@ case class RBRelation(
       val paramValues = paramType.zip(paramList).map{
         case (ty, p) => ty.cast(p)
       }
-      val toAppend    = IFunction(func)(paramValues) match {
-        case x: Product => x.productIterator.toList
-        case x          => List(x)
-      }
-      r ++ toAppend
+      r ++ TupleUtil.tupleToList(IFunction(func)(paramValues))
     })
     val newTypes = newData.size match {
       case 0 => types ++ outPutCols.map(_ => OBJECT)

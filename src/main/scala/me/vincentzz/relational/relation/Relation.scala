@@ -4,16 +4,19 @@ import java.util.UUID
 
 import me.vincentzz.relational.function.IFunction
 import me.vincentzz.relational.typedesc.{OBJECT, TypeDesc}
+import me.vincentzz.util.TupleUtil
 
+trait Relation extends Traversable[Map[String, _]] {
+  def columns: List[String]
+  def types: List[TypeDesc[_]]
+  def keys: List[String]
+  def values: String => List[_]
+  def row: Int => Map[String, _]
 
-trait Relation extends Traversable[Map[String,_]] {
-  def columns : List[String]
-  def types   : List[TypeDesc[_]]
-  def keys    : List[String]
-  def values  : String => List[_]
-  def row     : Int    => Map[String, _]
-
-  def newInstance(cols: List[String], types: List[TypeDesc[_]], keys: List[String], dataList: List[_]): Relation
+  def newInstance(cols: List[String],
+                  types: List[TypeDesc[_]],
+                  keys: List[String],
+                  dataList: List[_]): Relation
 
   /**
     * return the type description of given column
@@ -39,13 +42,13 @@ trait Relation extends Traversable[Map[String,_]] {
     project(columns.filter(!cols.contains(_)))
   }
 
-
   /**
     * Get new Relation with specified keys
     * @param newKeys new Key column list
     * @return
     */
-  def withKeys(newKeys: List[String]): Relation = newInstance(columns, types, newKeys, (0 until size).map(i => columns.map(row(i)(_))).toList)
+  def withKeys(newKeys: List[String]): Relation =
+    newInstance(columns, types, newKeys, (0 until size).map(i => columns.map(row(i)(_))).toList)
 
   /**
     * extend with index number
@@ -77,22 +80,23 @@ trait Relation extends Traversable[Map[String,_]] {
     * @tparam B type place holder2
     * @return
     */
-  def restrict[A,B](func: A => B, bindCols: List[String]): Relation
-
+  def restrict[A, B](func: A => B, bindCols: List[String]): Relation
 
   /**
     * return true if any row matches given record exactly
     * @param record Map of (column -> value) pair
     * @return
     */
-  def contains(record: Map[String, _]): Boolean = (0 until size).foldLeft(false)((r, i) => r || (row(i) == record))
+  def contains(record: Map[String, _]): Boolean =
+    (0 until size).foldLeft(false)((r, i) => r || (row(i) == record))
 
   /**
     * return true if any row contains given record
     * @param record Map of (column -> value) pair
     * @return
     */
-  def appears(record: Map[String, _]): Boolean = (0 until size).foldLeft(false)((r, i) => r || record.toSet.subsetOf(row(i).toSet))
+  def appears(record: Map[String, _]): Boolean =
+    (0 until size).foldLeft(false)((r, i) => r || record.toSet.subsetOf(row(i).toSet))
 
   /**
     * Traverse by rows
@@ -116,9 +120,12 @@ trait Relation extends Traversable[Map[String,_]] {
     */
   def filter(condition: Map[String, _]): Relation = {
     condition.keySet.foreach(col => assert(columns.contains(col), s"column $col not exist"))
-    val newData = (0 until size).filter(i => {
-      row(i).filterKeys(condition.keySet.contains(_)) == condition
-    }).map(r => columns.map(row(r))).toList
+    val newData = (0 until size)
+      .filter(i => {
+        row(i).filterKeys(condition.keySet.contains(_)) == condition
+      })
+      .map(r => columns.map(row(r)))
+      .toList
     newInstance(columns, types, keys, newData)
   }
 
@@ -137,9 +144,13 @@ trait Relation extends Traversable[Map[String,_]] {
   def distinct(cols: List[String]): Relation = {
     cols.foreach(col => assert(columns.contains(col), s"column $col not exist"))
     val newTypes = cols.map(typeOf)
-    val newData  = (0 until size).map(i => {
-      row(i).filterKeys(cols.contains)
-    }).toSet[Map[String, _]].toList.map(r => cols.map(r(_)))
+    val newData = (0 until size)
+      .map(i => {
+        row(i).filterKeys(cols.contains)
+      })
+      .toSet[Map[String, _]]
+      .toList
+      .map(r => cols.map(r(_)))
     newInstance(cols, newTypes, Nil, newData)
   }
 
@@ -151,10 +162,13 @@ trait Relation extends Traversable[Map[String,_]] {
     */
   def union(that: Relation): Relation = {
     assert(this.columns.toSet == that.columns.toSet, "columns does not match.")
-    assert(this.types   == that.types  , "column types does not match.")
-    val newRows = (0 until that.size).filter( i => {
-      !this.contains(that.row(i))
-    }).map(that.row).toList
+    assert(this.types == that.types, "column types does not match.")
+    val newRows = (0 until that.size)
+      .filter(i => {
+        !this.contains(that.row(i))
+      })
+      .map(that.row)
+      .toList
     appendRows(newRows)
   }
 
@@ -165,10 +179,11 @@ trait Relation extends Traversable[Map[String,_]] {
     */
   def join(that: Relation): Relation = {
     val matchCols = this.columns.filter(that.columns.contains(_))
-    matchCols.foreach(col => assert(this.typeOf(col) == that.typeOf(col), s"type mismatch on column $col"))
+    matchCols.foreach(col =>
+      assert(this.typeOf(col) == that.typeOf(col), s"type mismatch on column $col"))
 
-    val thisCols   = this.columns.filter(!matchCols.contains(_))
-    val thatCols   = that.columns.filter(!matchCols.contains(_))
+    val thisCols = this.columns.filter(!matchCols.contains(_))
+    val thatCols = that.columns.filter(!matchCols.contains(_))
 
     val newHeaders = matchCols ++ thisCols ++ thatCols
     val newType    = (matchCols ++ thisCols).map(this.typeOf) ++ that.columns.map(that.typeOf)
@@ -198,7 +213,7 @@ trait Relation extends Traversable[Map[String,_]] {
     */
   def semiMinus(that: Relation): Relation = {
     val matchCols = this.columns.filter(that.columns.contains)
-    val newData   = (for {
+    val newData = (for {
       i <- 0 until this.size
       if !that.appears(matchCols.map(col => col -> this.row(i)(col)).toMap)
     } yield columns.map(this.row(i)(_))).toList
@@ -212,7 +227,8 @@ trait Relation extends Traversable[Map[String,_]] {
     */
   def minus(that: Relation): Relation = {
     assert(this.columns.sorted == that.columns.sorted, "column names mismatch")
-    this.columns.foreach(col => assert(this.typeOf(col) == that.typeOf(col), s"type of $col mismatch"))
+    this.columns.foreach(col =>
+      assert(this.typeOf(col) == that.typeOf(col), s"type of $col mismatch"))
     semiMinus(that)
   }
 
@@ -240,23 +256,46 @@ trait Relation extends Traversable[Map[String,_]] {
     extend(func, List(col), List(temp)).allBut(List(col)).rename(List(temp), List(col))
   }
 
-  //TODO refactor
-  def summarize(groupCols: List[String], op: IFunction, col: String, outPutCol: String): Relation = {
-    groupCols.foreach(col => assert(columns.contains(col), s"column $col not exists"))
-    assert(!groupCols.contains(outPutCol), s"column $outPutCol exists in grouping columns")
+  /**
+    * summarize relation group by given columns, apply function on List of col, extend with output column
+    * @param groupCols  group by columns
+    * @param func       aggregate function
+    * @param col        columns to apply aggregate function
+    * @param outPutCols output column names
+    * @tparam A         Type of input column type
+    * @tparam B         Type of output column type
+    * @return
+    */
+  def summarize[A, B](groupCols: List[String],
+                      func: List[A] => B,
+                      col: String,
+                      outPutCols: List[String]): Relation = {
+    groupCols.foreach(groupCol =>
+      assert(columns.contains(groupCol), s"column $groupCol not exists"))
+    assert(columns.contains(col), s"$col must be one of $columns")
+    assert(!groupCols.contains(col), s"cannot run aggregate function on grouping columns")
+    outPutCols.foreach(outPutCol =>
+      assert(!groupCols.contains(outPutCol), s"column $outPutCol exists in grouping columns"))
 
-    val newHeader  = groupCols :+ outPutCol
-    val dis_rel    = distinct(groupCols)
-    val newKeys    = Nil
+    val newHeader = groupCols ++ outPutCols
+    val dis_rel   = distinct(groupCols)
+    val newKeys   = Nil
 
-    val newData    = (0 until dis_rel.size).map(i => {
-      groupCols.map(dis_rel.row(i)(_)) :+ op(List(filter(dis_rel.row(i)).values(col)))
-    }).toList
+    val newData = (0 until dis_rel.size)
+      .map(i => {
+        val calValue = IFunction(func)(List(filter(dis_rel.row(i)).values(col)))
+        groupCols.map(dis_rel.row(i)(_)) ++ TupleUtil.tupleToList(calValue)
+      })
+      .toList
 
-    val newTypes = groupCols.map(typeOf) :+ (newData.size match {
+    val newTypes = groupCols.map(typeOf) ++ outPutCols.indices.map(i => newData.size match {
       case 0 => OBJECT
-      case _ => TypeDesc.typeDescOf(newData.head.last)
+      case _ => TypeDesc.typeDescOf(newData.head.drop(groupCols.size)(i))
     })
+    //    val newTypes = groupCols.map(typeOf) ++ (newData.size match {
+//      case 0 => OBJECT
+//      case _ => newData.head.drop(groupCols.size).map(TypeDesc.typeDescOf(_))
+//    })
 
     newInstance(newHeader, newTypes, newKeys, newData)
   }
@@ -273,48 +312,56 @@ trait Relation extends Traversable[Map[String,_]] {
 
       val dataMaxWide = size match {
         case 0 => 0
-        case _ => (0 until size).map {
-          row(_)(col).toString.split(NEW_LINE).map(_.length).max
-        }.max
+        case _ =>
+          (0 until size).map {
+            row(_)(col).toString.split(NEW_LINE).map(_.length).max
+          }.max
       }
-      List (dataMaxWide, headerLen, typeLen).max
+      List(dataMaxWide, headerLen, typeLen).max
     }
 
     val headerHeight = columns.map(_.split(NEW_LINE).length).max
     val typeHeight   = types.map(_.toString.split(NEW_LINE).length).max
-    val rowHeight   = headerHeight :: typeHeight :: {
-      (0 until size).map {
-        i => columns.map(row(i)(_).toString.split(NEW_LINE).length).max
+    val rowHeight = headerHeight :: typeHeight :: {
+      (0 until size).map { i =>
+        columns.map(row(i)(_).toString.split(NEW_LINE).length).max
       }.toList
     }
 
-    val bolder = "+" + colWidths.map(n => s"${"-" * (n+2)}").mkString("+") + "+"
+    val bolder = "+" + colWidths.map(n => s"${"-" * (n + 2)}").mkString("+") + "+"
 
     val toPrint = columns :: types :: (0 until size).map(i => columns.map(row(i)(_))).toList
 
-    bolder + NEW_LINE + toPrint.zip(rowHeight).map {
-      case (r, h) => {
-        (0 until h).map( ri => {
-          r.zip(colWidths).map {
-            case (c, n) => {
-              val content = c.toString.split(NEW_LINE)
-              val height  = content.size
-              val preEmLine  = (h - height) / 2
-              val postEmLine = h - height - preEmLine
-              val wide = content.map(_.length).max
-              val headSpace = (n - wide) / 2
+    bolder + NEW_LINE + toPrint
+      .zip(rowHeight)
+      .map {
+        case (r, h) => {
+          (0 until h)
+            .map(ri => {
+              r.zip(colWidths)
+                .map {
+                  case (c, n) => {
+                    val content    = c.toString.split(NEW_LINE)
+                    val height     = content.size
+                    val preEmLine  = (h - height) / 2
+                    val postEmLine = h - height - preEmLine
+                    val wide       = content.map(_.length).max
+                    val headSpace  = (n - wide) / 2
 
-              if (ri < preEmLine || ri >= h- postEmLine) f"| ${" " * n } "
-              else {
-                val i = h - postEmLine -ri
-                val l = height - i
-                val tailSpace = n - headSpace - content(l).length
-                f"| ${" " * headSpace}${content(l)}${" " * tailSpace} "
-              }
-            }.mkString
-          }.mkString + "|"
-        }).mkString(NEW_LINE)
-      }.mkString
-    }.mkString(NEW_LINE + bolder + NEW_LINE) + NEW_LINE + bolder
+                    if (ri < preEmLine || ri >= h - postEmLine) f"| ${" " * n} "
+                    else {
+                      val i         = h - postEmLine - ri
+                      val l         = height - i
+                      val tailSpace = n - headSpace - content(l).length
+                      f"| ${" " * headSpace}${content(l)}${" " * tailSpace} "
+                    }
+                  }.mkString
+                }
+                .mkString + "|"
+            })
+            .mkString(NEW_LINE)
+        }.mkString
+      }
+      .mkString(NEW_LINE + bolder + NEW_LINE) + NEW_LINE + bolder
   }
 }
