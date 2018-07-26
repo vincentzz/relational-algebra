@@ -3,6 +3,7 @@ for fun
 
 ===========================
 
+### Create a people table
 ```
 scala> 
 
@@ -45,10 +46,12 @@ val ppl = RBRelation.create(List( "ID", "NAME", "AGE", "DEPARTMENT", "ON_BOARD_D
 +-------+---------+------+------------+-------------------------------+
 ```
 
+### Save to readable/modifiable CSV file
 ```
 scala> CSV.saveToCSV("/home/vincent/Desktop/people.csv", ppl)
 ```
 
+### Load from CSV
 ```
 scala> 
 
@@ -77,6 +80,7 @@ CSV.loadFromCSV("/home/vincent/Desktop/people.csv",
 +---------+-------------------------------+
 ```
 
+### Keep specified columns
 ```
 scala> ppl.project(List("ID","NAME"))
 ```
@@ -101,6 +105,7 @@ scala> ppl.project(List("ID","NAME"))
 +-------+---------+
 ```
 
+### Drop specified columns
 ```
 scala> ppl.allBut(List("DEPARTMENT","ON_BOARD_DATE")
 
@@ -123,6 +128,7 @@ scala> ppl.allBut(List("DEPARTMENT","ON_BOARD_DATE")
 +-------+---------+------+
 ```
 
+### Rename columns
 ```
 scala> ppl.rename(List("DEPARTMENT","ON_BOARD_DATE"), List("DEP", "ON_BOARD"))
 ```
@@ -147,6 +153,7 @@ scala> ppl.rename(List("DEPARTMENT","ON_BOARD_DATE"), List("DEP", "ON_BOARD"))
 +-------+---------+------+---------+-------------------------------+
 ```
 
+### Fiter record with lambda
 ```
 scala> 
 
@@ -170,6 +177,7 @@ ppl.restrict(condition, List("ID", "DEPARTMENT"))
 +-------+---------+------+------------+-------------------------------+
 ```
 
+### Extend table by applying specified columns to lambda
 ```
 scala> 
 
@@ -197,6 +205,7 @@ ppl.extend(nameWithAge, List("NAME", "AGE"), List("NAME_WITH_AGE"))
 +-------+---------+------+------------+-------------------------------+---------------+
 ```
 
+### Summarize data grouping by specifed columns
 ```
 scala> ppl.summarize(List("DEPARTMENT"), Aggregation.AVG, "AGE", List("AVG_AGE"))
 ```
@@ -217,6 +226,8 @@ scala> ppl.summarize(List("DEPARTMENT"), Aggregation.AVG, "AGE", List("AVG_AGE")
 +------------+---------+
 ```
 
+### Table joining
+We need a new table for projects first.
 ```
 scala> 
 val prj = RBRelation.create(List( "DEPARTMENT",   "PROJECT", "LEAD"),
@@ -250,6 +261,7 @@ val prj = RBRelation.create(List( "DEPARTMENT",   "PROJECT", "LEAD"),
 +------------+------------+---------+
 ```
 
+Now we do inner join on them:
 ```
 scala> ppl.join(prj)
 ```
