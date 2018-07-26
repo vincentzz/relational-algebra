@@ -186,7 +186,7 @@ trait Relation extends Traversable[Map[String, _]] {
     val thatCols = that.columns.filter(!matchCols.contains(_))
 
     val newHeaders = matchCols ++ thisCols ++ thatCols
-    val newType    = (matchCols ++ thisCols).map(this.typeOf) ++ that.columns.map(that.typeOf)
+    val newType    = (matchCols ++ thisCols).map(this.typeOf) ++ thatCols.map(that.typeOf)
 
     val newData: List[List[_]] = (for {
       i1 <- 0 until this.size
