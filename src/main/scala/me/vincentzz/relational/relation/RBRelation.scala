@@ -70,7 +70,7 @@ case class RBRelation(
     val newHeader    = colIdxToKeep.map(columns(_)).toList
     val newTypes     = colIdxToKeep.map(types(_)).toList
     val newData      = data.map(r => colIdxToKeep.map(r(_)).toList)
-    newInstance(newHeader, newTypes, Nil, newData)
+    newInstance(newHeader, newTypes, Nil, newData).distinct(newHeader)
   }
 
   /**
